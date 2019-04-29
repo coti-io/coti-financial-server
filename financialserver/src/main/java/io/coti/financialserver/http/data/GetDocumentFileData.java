@@ -23,10 +23,15 @@ public class GetDocumentFileData implements ISignable, ISignValidatable {
         this.userHash = userHash;
         this.userSignature = userSignature;
     }
-    
+
     @Override
     public SignatureData getSignature() {
         return userSignature;
+    }
+
+    @Override
+    public void setSignature(SignatureData signature) {
+        this.userSignature = signature;
     }
 
     @Override
@@ -37,10 +42,5 @@ public class GetDocumentFileData implements ISignable, ISignValidatable {
     @Override
     public void setSignerHash(Hash signerHash) {
         this.userHash = signerHash;
-    }
-
-    @Override
-    public void setSignature(SignatureData signature) {
-        this.userSignature = signature;
     }
 }

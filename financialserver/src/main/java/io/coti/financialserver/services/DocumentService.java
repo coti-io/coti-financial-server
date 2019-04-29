@@ -50,6 +50,8 @@ public class DocumentService {
     private Disputes disputes;
     @Autowired
     private DisputeService disputeService;
+    @Autowired
+    private WebSocketService webSocketService;
 
     public ResponseEntity<IResponse> newDocument(NewDocumentRequest request) {
 
@@ -79,16 +81,12 @@ public class DocumentService {
             disputeItemData.addDocumentHash(disputeDocumentData.getHash());
         }
 
-        ActionSide uploadSide;
-        if (disputeData.getConsumerHash().equals(disputeDocumentData.getUserHash())) {
-            uploadSide = ActionSide.Consumer;
-        } else if (disputeData.getMerchantHash().equals(disputeDocumentData.getUserHash())) {
-            uploadSide = ActionSide.Merchant;
-        } else {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new Response(DISPUTE_DOCUMENT_CREATE_UNAUTHORIZED, STATUS_ERROR));
+        ActionSide actionSide = disputeService.getActionSide(disputeData, disputeDocumentData.getUserHash());
+        if (actionSide == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new Response(DISPUTE_COMMENT_CREATE_UNAUTHORIZED, STATUS_ERROR));
         }
 
-        disputeDocumentData.setUploadSide(uploadSide);
+        disputeDocumentData.setUploadSide(actionSide);
 
         MultipartFile multiPartFile = request.getFile();
 
@@ -119,6 +117,7 @@ public class DocumentService {
         disputes.put(disputeData);
         disputeDocuments.put(disputeDocumentData);
 
+        webSocketService.notifyOnNewCommentOrDocument(disputeData, disputeDocumentData, disputeDocumentData.getUploadSide());
         return ResponseEntity.status(HttpStatus.OK).body(new NewDocumentResponse(disputeDocumentData));
     }
 

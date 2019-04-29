@@ -24,9 +24,13 @@ public class RocksDBConnector extends BaseNodeRocksDBConnector {
                 DisputeDocuments.class.getName(),
                 ReceiverBaseTransactionOwners.class.getName(),
                 RecourseClaims.class.getName(),
-                RollingReserves.class.getName(),
+                MerchantRollingReserves.class.getName(),
                 RecourseClaims.class.getName(),
-                RollingReserveReleaseDates.class.getName()
+                RollingReserveReleaseDates.class.getName(),
+                DisputeEvents.class.getName(),
+                DisputeHistory.class.getName(),
+                UnreadUserDisputeEvents.class.getName(),
+                InitialFunds.class.getName()
         ));
     }
 }

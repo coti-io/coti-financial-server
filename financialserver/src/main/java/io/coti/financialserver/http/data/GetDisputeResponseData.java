@@ -1,9 +1,9 @@
 package io.coti.financialserver.http.data;
 
-import io.coti.basenode.data.SignatureData;
 import io.coti.financialserver.data.DisputeData;
 import io.coti.financialserver.data.DisputeItemData;
 import io.coti.financialserver.data.DisputeStatus;
+import io.coti.financialserver.http.data.interfaces.IDisputeEventResponseData;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -12,13 +12,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Data
-public abstract class GetDisputeResponseData {
+public abstract class GetDisputeResponseData implements IDisputeEventResponseData {
     protected String hash;
     protected String transactionHash;
     protected Instant transactionCreationTime;
-    protected String consumerHash;
-    protected SignatureData consumerSignature;
-    protected String merchantHash;
     protected List<DisputeItemResponseData> disputeItems;
     protected DisputeStatus disputeStatus;
     protected BigDecimal amount;
@@ -38,9 +35,6 @@ public abstract class GetDisputeResponseData {
         this.hash = disputeData.getHash().toString();
         this.transactionHash = disputeData.getTransactionHash().toString();
         this.transactionCreationTime = disputeData.getTransactionCreationTime();
-        this.consumerHash = disputeData.getConsumerHash().toString();
-        this.consumerSignature = disputeData.getSignature();
-        this.merchantHash = disputeData.getMerchantHash().toString();
         this.disputeItems = new ArrayList<>();
         this.disputeStatus = disputeData.getDisputeStatus();
         this.amount = disputeData.getAmount();

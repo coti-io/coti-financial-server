@@ -32,6 +32,8 @@ public class ItemService {
     DisputeItemVoteCrypto disputeItemVoteCrypto;
     @Autowired
     DisputeService disputeService;
+    @Autowired
+    WebSocketService webSocketService;
 
     public ResponseEntity<IResponse> updateItem(UpdateItemRequest request) {
 
@@ -47,13 +49,9 @@ public class ItemService {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new Response(DISPUTE_NOT_FOUND, STATUS_ERROR));
         }
 
-        ActionSide actionSide;
-        if (disputeData.getConsumerHash().equals(disputeUpdateItemData.getUserHash())) {
-            actionSide = ActionSide.Consumer;
-        } else if (disputeData.getMerchantHash().equals(disputeUpdateItemData.getUserHash())) {
-            actionSide = ActionSide.Merchant;
-        } else {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new Response(UNAUTHORIZED, STATUS_ERROR));
+        ActionSide actionSide = disputeService.getActionSide(disputeData, disputeUpdateItemData.getUserHash());
+        if (actionSide == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new Response(DISPUTE_COMMENT_CREATE_UNAUTHORIZED, STATUS_ERROR));
         }
 
         for (Long itemId : disputeUpdateItemData.getItemIds()) {
@@ -105,6 +103,8 @@ public class ItemService {
 
         disputeItemVoteData.setVoteTime(Instant.now());
         disputeItemData.addItemVoteData(disputeItemVoteData);
+        disputes.put(disputeData);
+        webSocketService.notifyOnNewItemVote(disputeItemVoteData);
 
         try {
             disputeService.updateAfterVote(disputeData, disputeItemData);
