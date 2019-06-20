@@ -21,8 +21,7 @@ import java.util.List;
 @Slf4j
 @Service
 public class InitializationService extends BaseNodeInitializationService {
-    @Autowired
-    RollingReserveService rollingReserveService;
+
     @Value("${propagation.port}")
     private String propagationPort;
     @Value("${server.port}")
@@ -34,6 +33,8 @@ public class InitializationService extends BaseNodeInitializationService {
     private EnumMap<NodeType, List<Class<? extends IPropagatable>>> publisherNodeTypeToMessageTypesMap = new EnumMap<>(NodeType.class);
     @Autowired
     private DistributionService distributionService;
+    @Autowired
+    private FundDistributionService fundDistributionService;
 
     @PostConstruct
     public void init() {
@@ -58,6 +59,7 @@ public class InitializationService extends BaseNodeInitializationService {
         super.init();
 
         distributionService.distributeToInitialFunds();
+        fundDistributionService.initReservedBalance();
     }
 
     @Override

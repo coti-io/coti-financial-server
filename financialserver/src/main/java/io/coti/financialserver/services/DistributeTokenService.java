@@ -4,16 +4,15 @@ import io.coti.basenode.crypto.NodeCryptoHelper;
 import io.coti.basenode.data.Hash;
 import io.coti.basenode.http.Response;
 import io.coti.basenode.http.interfaces.IResponse;
-import io.coti.basenode.model.Transactions;
 import io.coti.financialserver.crypto.TokenSaleDistributionCrypto;
+import io.coti.financialserver.data.Fund;
 import io.coti.financialserver.data.ReservedAddress;
-import io.coti.financialserver.data.TokenSale;
 import io.coti.financialserver.data.TokenSaleDistributionData;
 import io.coti.financialserver.data.TokenSaleDistributionEntryData;
 import io.coti.financialserver.http.TokenSaleDistributionRequest;
 import io.coti.financialserver.http.TokenSaleDistributionResponse;
-import io.coti.financialserver.http.TokenSaleDistributionResultData;
 import io.coti.financialserver.http.data.TokenSaleDistributionResponseData;
+import io.coti.financialserver.http.data.TokenSaleDistributionResultData;
 import io.coti.financialserver.model.TokenSaleDistributions;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.HttpStatus;
@@ -32,18 +31,16 @@ import static io.coti.financialserver.http.HttpStringConstants.DUPLICATE_FUND_NA
 
 @Slf4j
 @Service
-public class DistributeTokensService {
+public class DistributeTokenService {
 
     @Value("${financialserver.seed}")
     private String seed;
     @Value("${kycserver.public.key}")
     private String kycServerPublicKey;
     @Autowired
-    TokenSaleDistributionCrypto tokenSaleDistributionCrypto;
+    private TokenSaleDistributionCrypto tokenSaleDistributionCrypto;
     @Autowired
-    TransactionCreationService transactionCreationService;
-    @Autowired
-    Transactions transactions;
+    private TransactionCreationService transactionCreationService;
     @Autowired
     private NodeCryptoHelper nodeCryptoHelper;
     @Autowired
@@ -54,7 +51,7 @@ public class DistributeTokensService {
         TokenSaleDistributionData tokenSaleDistributionData = request.getTokenSaleDistributionData();
         tokenSaleDistributionData.init();
 
-        EnumMap<TokenSale, Boolean> tokenSaleNameMap = new EnumMap<>(TokenSale.class);
+        EnumMap<Fund, Boolean> tokenSaleNameMap = new EnumMap<>(Fund.class);
 
         for (TokenSaleDistributionEntryData tokenSaleDistributionEntryData : tokenSaleDistributionData.getTokenDistributionDataEntries()) {
             if (tokenSaleNameMap.containsKey(tokenSaleDistributionEntryData.getFundName())) {
