@@ -7,7 +7,7 @@ import lombok.Data;
 import javax.validation.constraints.NotEmpty;
 
 @Data
-public class FundDistributionRequest {
+public class AddFundDistributionsRequest {
 
     @NotEmpty
     private String fileName;

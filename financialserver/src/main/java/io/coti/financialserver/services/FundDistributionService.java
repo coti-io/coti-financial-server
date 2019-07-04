@@ -84,10 +84,10 @@ public class FundDistributionService {
             FundDistributionReservedBalanceData fundDistributionReservedBalanceData = new FundDistributionReservedBalanceData(fund, BigDecimal.ZERO);
             fundReservedBalanceMap.put(fundAddress, fundDistributionReservedBalanceData);
         }
-        updateReservedAmountsFromPendingTransactions();
+        insertReservedAmountsFromPendingTransactions();
     }
 
-    private void updateReservedAmountsFromPendingTransactions() {
+    private void insertReservedAmountsFromPendingTransactions() {
         dailyFundDistributions.forEach(dailyFundDistributionData ->
                 dailyFundDistributionData.getFundDistributionEntries().values().forEach(fundDistributionData -> {
                     if (fundDistributionData.isLockingAmount()) {
@@ -147,7 +147,7 @@ public class FundDistributionService {
         return ResponseEntity.status(HttpStatus.OK).body(new GetReservedBalancesResponse(reservedBalances));
     }
 
-    public ResponseEntity<IResponse> distributeFundFromLocalFile(FundDistributionRequest request) {
+    public ResponseEntity<IResponse> distributeFundFromLocalFile(AddFundDistributionsRequest request) {
         List<FundDistributionData> fundDistributionFileDataEntries = new ArrayList<>();
         ResponseEntity<IResponse> distributionFileVerificationResponse = verifyDailyDistributionLocalFile(request, fundDistributionFileDataEntries);
 
@@ -161,7 +161,7 @@ public class FundDistributionService {
 
     }
 
-    public ResponseEntity<IResponse> distributeFundFromFile(FundDistributionRequest request) {
+    public ResponseEntity<IResponse> distributeFundFromFile(AddFundDistributionsRequest request) {
         AtomicLong acceptedDistributionNumber = new AtomicLong(0);
         AtomicLong notAcceptedDistributionNumber = new AtomicLong(0);
         Thread monitorDistributionFile = monitorDistributionFile(acceptedDistributionNumber, notAcceptedDistributionNumber);
@@ -215,7 +215,7 @@ public class FundDistributionService {
         return LocalDate.now(ZoneId.of("UTC")).minusDays(1).atStartOfDay();
     }
 
-    private ResponseEntity<IResponse> verifyDailyDistributionFile(FundDistributionRequest request, List<FundDistributionData> fundDistributionFileDataEntries) {
+    private ResponseEntity<IResponse> verifyDailyDistributionFile(AddFundDistributionsRequest request, List<FundDistributionData> fundDistributionFileDataEntries) {
         FundDistributionFileData fundDistributionFileData = request.getFundDistributionFileData(new Hash(kycServerPublicKey));
         String fileName = request.getFileName();
 
@@ -227,7 +227,7 @@ public class FundDistributionService {
         return null;
     }
 
-    private ResponseEntity<IResponse> verifyDailyDistributionLocalFile(FundDistributionRequest request, List<FundDistributionData> fundDistributionFileDataEntries) {
+    private ResponseEntity<IResponse> verifyDailyDistributionLocalFile(AddFundDistributionsRequest request, List<FundDistributionData> fundDistributionFileDataEntries) {
         FundDistributionFileData fundDistributionFileData = request.getFundDistributionFileData(new Hash(kycServerPublicKey));
         String fileName = request.getFileName();
 
@@ -366,7 +366,7 @@ public class FundDistributionService {
                 }
         );
         return ResponseEntity.status(HttpStatus.OK)
-                .body(new FundDistributionResponse(new FundDistributionResponseData(fundDistributionFileEntryResults)));
+                .body(new AddFundDistributionsResponse(new AddFundDistributionsResponseData(fundDistributionFileEntryResults)));
     }
 
     private String getTransactionEntryStatusByChecks(boolean isAddressValid, boolean isLockupDateValid, boolean uniqueByDate, boolean passedPreBalanceCheck) {
@@ -385,20 +385,22 @@ public class FundDistributionService {
         return ACCEPTED;
     }
 
-
     private boolean updateFundAvailableLockedBalances(FundDistributionData entryData) {
-        if (entryData.getAmount().compareTo(BigDecimal.ZERO) < 0) {
+        return updateFundAvailableLockedBalances(entryData.getDistributionPoolFund().getFundHash(), entryData.getReceiverAddress(), entryData.getAmount(), false);
+    }
+
+    private boolean updateFundAvailableLockedBalances(Hash fundAddress, Hash receiverAddress, BigDecimal amount, boolean allowNegative) {
+        if (!allowNegative && amount.compareTo(BigDecimal.ZERO) < 0) {
             return false;
         }
-        Hash fundAddress = entryData.getDistributionPoolFund().getFundHash();
         FundDistributionReservedBalanceData fundDistributionReservedBalanceData = fundReservedBalanceMap.get(fundAddress);
-        BigDecimal updatedAmountToLock = fundDistributionReservedBalanceData.getReservedAmount().add(entryData.getAmount());
+        BigDecimal updatedAmountToLock = fundDistributionReservedBalanceData.getReservedAmount().add(amount);
         if (updatedAmountToLock.compareTo(baseNodeBalanceService.getPreBalanceByAddress(fundAddress)) > 0 ||
                 updatedAmountToLock.compareTo(baseNodeBalanceService.getBalanceByAddress(fundAddress)) > 0) {
             return false;
         } else {
             fundDistributionReservedBalanceData.setReservedAmount(updatedAmountToLock);
-            updateAddressToReservedBalanceMap(entryData.getReceiverAddress(), entryData.getAmount());
+            updateAddressToReservedBalanceMap(receiverAddress, amount);
         }
         return true;
     }
@@ -488,7 +490,7 @@ public class FundDistributionService {
                     isSuccessful = true;
                     fundDistributionData.setStatus(DistributionEntryStatus.CREATED);
                     fundDistributionEntries.put(fundDistributionData.getHash(), fundDistributionData);
-                    updateReservedBalanceAfterTransactionCreated(fundDistributionData);
+                    substractDistributionFromReservedBalanceMaps(fundDistributionData);
                 } else {
                     failedTransactionNumber.incrementAndGet();
                     fundDistributionData.setStatus(DistributionEntryStatus.FAILED);
@@ -514,7 +516,7 @@ public class FundDistributionService {
         }
     }
 
-    private void updateReservedBalanceAfterTransactionCreated(FundDistributionData fundDistributionData) {
+    private void substractDistributionFromReservedBalanceMaps(FundDistributionData fundDistributionData) {
 
         FundDistributionReservedBalanceData fundReserveBalanceData = fundReservedBalanceMap.get(fundDistributionData.getDistributionPoolFund().getFundHash());
         BigDecimal updatedFundReservedAmount = fundReserveBalanceData.getReservedAmount().subtract(fundDistributionData.getAmount());
@@ -571,7 +573,7 @@ public class FundDistributionService {
                         isSuccessful = true;
                         fundDistributionData.setStatus(DistributionEntryStatus.CREATED);
                         failedEntryHashKeys.remove();
-                        updateReservedBalanceAfterTransactionCreated(fundDistributionData);
+                        substractDistributionFromReservedBalanceMaps(fundDistributionData);
                     } else {
                         failedTransactionNumber.incrementAndGet();
                     }
@@ -662,7 +664,6 @@ public class FundDistributionService {
         fundDistributionFileResultData.incrementMessageByteSize(resultLineInBytes.length);
     }
 
-
     public ResponseEntity<IResponse> deleteFundFileRecord() {
         Hash fundDistributionFileRecordHash = getHashOfDate(Instant.now());
 
@@ -671,5 +672,77 @@ public class FundDistributionService {
             dailyFundDistributionFiles.delete(fundDistributionFileRecord);
         }
         return ResponseEntity.status(HttpStatus.OK).body(new Response(DISTRIBUTION_FILE_RECORD_DELETED));
+    }
+
+    public ResponseEntity<IResponse> getFailedDistributions() {
+        List<FundDistributionResponseData> fundDistributions = new ArrayList<>();
+
+        failedFundDistributions.forEach(failedFundDistributionData ->
+        {
+            Hash hashOfDay = failedFundDistributionData.getHash();
+            DailyFundDistributionData dailyFundDistributionData = dailyFundDistributions.getByHash(hashOfDay);
+            failedFundDistributionData.getFundDistributionHashes().keySet().forEach(fundDistributionHash -> {
+                FundDistributionData fundDistributionData = dailyFundDistributionData.getFundDistributionEntries().get(fundDistributionHash);
+                fundDistributions.add(new FundDistributionResponseData(fundDistributionData));
+            });
+
+        });
+
+        return ResponseEntity.ok().body(new GetFundDistributionsResponse(fundDistributions));
+    }
+
+    public ResponseEntity<IResponse> getDistributionsByDate(GetDistributionsByDateRequest getDistributionsByDateRequest) {
+        List<FundDistributionResponseData> fundDistributions = new ArrayList<>();
+
+        LocalDateTime distributionDate = getDistributionsByDateRequest.getDistributionDate();
+        Hash hashOfDistributionDate = getHashOfDate(distributionDate);
+
+        DailyFundDistributionData dailyFundDistributionData = dailyFundDistributions.getByHash(hashOfDistributionDate);
+
+        if (dailyFundDistributionData != null) {
+            LinkedHashMap<Hash, FundDistributionData> fundDistributionEntries = dailyFundDistributionData.getFundDistributionEntries();
+            Hash distributionHash = getDistributionsByDateRequest.getDistributionHash();
+            if (distributionHash.getBytes().length != 0) {
+                FundDistributionData fundDistributionData = fundDistributionEntries.get(distributionHash);
+                if (fundDistributionData != null) {
+                    fundDistributions.add(new FundDistributionResponseData(fundDistributionData));
+                }
+            } else {
+                fundDistributionEntries.values().forEach(fundDistributionData -> fundDistributions.add(new FundDistributionResponseData(fundDistributionData)));
+            }
+        }
+
+        return ResponseEntity.ok().body(new GetFundDistributionsResponse(fundDistributions));
+    }
+
+    public ResponseEntity<IResponse> updateFundDistributionAmount(UpdateDistributionAmountRequest updateDistributionAmountRequest) {
+        LocalDateTime distributionDate = updateDistributionAmountRequest.getDistributionDate();
+        Hash hashOfDistributionDate = getHashOfDate(distributionDate);
+
+        DailyFundDistributionData dailyFundDistributionData = dailyFundDistributions.getByHash(hashOfDistributionDate);
+        if (dailyFundDistributionData == null) {
+            return ResponseEntity.badRequest().body(new Response(DISTRIBUTION_DATE_ERROR, STATUS_ERROR));
+        }
+
+        LinkedHashMap<Hash, FundDistributionData> fundDistributionEntries = dailyFundDistributionData.getFundDistributionEntries();
+        if (fundDistributionEntries == null || fundDistributionEntries.isEmpty()) {
+            return ResponseEntity.badRequest().body(new Response(DISTRIBUTION_DATE_EMPTY_ENTRIES_ERROR, STATUS_ERROR));
+        }
+        FundDistributionData fundDistributionData = fundDistributionEntries.get(updateDistributionAmountRequest.getDistributionHash());
+        if (fundDistributionData == null) {
+            return ResponseEntity.badRequest().body(new Response(DISTRIBUTION_HASH_DOESNT_EXIST, STATUS_ERROR));
+        }
+        if (!fundDistributionData.isLockingAmount()) {
+            return ResponseEntity.badRequest().body(new Response(DISTRIBUTION_INITIATED_OR_CANCELLED, STATUS_ERROR));
+        }
+
+        BigDecimal oldAmount = fundDistributionData.getAmount();
+        if (!updateFundAvailableLockedBalances(fundDistributionData.getDistributionPoolFund().getFundHash(), fundDistributionData.getReceiverAddress(), updateDistributionAmountRequest.getDistributionAmount().subtract(oldAmount), true)) {
+            return ResponseEntity.badRequest().body(new Response(INVALID_UPDATED_DISTRIBUTION_AMOUNT, STATUS_ERROR));
+        }
+        fundDistributionData.setAmount(updateDistributionAmountRequest.getDistributionAmount());
+        dailyFundDistributions.put(dailyFundDistributionData);
+
+        return ResponseEntity.ok().body(new UpdateDistributionAmountResponse(fundDistributionData.getHash(), oldAmount, fundDistributionData.getAmount()));
     }
 }
