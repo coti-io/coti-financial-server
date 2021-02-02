@@ -62,7 +62,7 @@ public class TransactionCreationService {
 
         clusterService.selectSources(chargebackTransaction);
 
-        //     transactionCryptoCreator.signBaseTransactions(chargebackTransaction);
+        //     transactionCryptoCreator.signBaseTransactions(chargebackTransaction)
         transactionCrypto.signMessage(chargebackTransaction);
 
         DspConsensusResult dspConsensusResult = new DspConsensusResult(chargebackTransaction.getHash());
@@ -84,8 +84,7 @@ public class TransactionCreationService {
         baseTransactions.add(ibt);
         baseTransactions.add(rbt);
 
-        double trustScore = MAX_TRUST_SCORE;
-        TransactionData initialTransactionData = new TransactionData(baseTransactions, TransactionType.Initial.toString(), trustScore, Instant.now(), TransactionType.Initial);
+        TransactionData initialTransactionData = new TransactionData(baseTransactions, TransactionType.Initial.toString(), MAX_TRUST_SCORE, Instant.now(), TransactionType.Initial);
 
         if (!balanceService.checkBalancesAndAddToPreBalance(initialTransactionData.getBaseTransactions())) {
             throw new TransactionValidationException("Balance check failed");

@@ -21,18 +21,11 @@ public class DisputeItemData implements Serializable {
     private String name;
     @NotNull
     private DisputeReason reason;
-    private DisputeItemStatus status;
-    private List<Hash> disputeDocumentHashes;
-    private List<Hash> disputeCommentHashes;
-    private List<DisputeItemVoteData> disputeItemVotesData;
+    private DisputeItemStatus status = DisputeItemStatus.RECALL;
+    private List<Hash> disputeDocumentHashes = new ArrayList<>();
+    private List<Hash> disputeCommentHashes = new ArrayList<>();
+    private List<DisputeItemVoteData> disputeItemVotesData = new ArrayList<>();
     private Instant arbitratorsDecisionTime;
-
-    public DisputeItemData() {
-        disputeDocumentHashes = new ArrayList<>();
-        disputeCommentHashes = new ArrayList<>();
-        disputeItemVotesData = new ArrayList<>();
-        status = DisputeItemStatus.Recall;
-    }
 
     public void addDocumentHash(Hash documentHash) {
         disputeDocumentHashes.add(documentHash);
@@ -46,7 +39,7 @@ public class DisputeItemData implements Serializable {
         disputeItemVotesData.add(disputeItemVoteData);
     }
 
-    public Boolean arbitratorAlreadyVoted(Hash arbitratorHash) {
+    public boolean arbitratorAlreadyVoted(Hash arbitratorHash) {
         for (DisputeItemVoteData disputeItemVoteData : disputeItemVotesData) {
             if (disputeItemVoteData.getArbitratorHash().equals(arbitratorHash)) {
                 return true;

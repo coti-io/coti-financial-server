@@ -21,31 +21,6 @@ public class FundDistributionFileResultData implements IEntity, ISignable, ISign
     private int messageByteSize = 0;
     private SignatureData financialServerSignature;
 
-
-    @Override
-    public SignatureData getSignature() {
-        return financialServerSignature;
-    }
-
-    @Override
-    public Hash getSignerHash() {
-        return financialServerHash;
-    }
-
-    @Override
-    public void setSignerHash(Hash signerHash) {
-        financialServerHash = signerHash;
-    }
-
-    @Override
-    public void setSignature(SignatureData signature) {
-        financialServerSignature = signature;
-    }
-
-    public void incrementMessageByteSize(long addedMessageByteSize) {
-        messageByteSize += addedMessageByteSize;
-    }
-
     @Override
     public Hash getHash() {
         return financialServerHash;
@@ -55,4 +30,30 @@ public class FundDistributionFileResultData implements IEntity, ISignable, ISign
     public void setHash(Hash hash) {
         this.financialServerHash = hash;
     }
+
+    @Override
+    public SignatureData getSignature() {
+        return financialServerSignature;
+    }
+
+    @Override
+    public void setSignature(SignatureData signature) {
+        financialServerSignature = signature;
+    }
+
+    @Override
+    public Hash getSignerHash() {
+        return getHash();
+    }
+
+    @Override
+    public void setSignerHash(Hash signerHash) {
+        financialServerHash = signerHash;
+    }
+
+    public void incrementMessageByteSize(long addedMessageByteSize) {
+        messageByteSize += addedMessageByteSize;
+    }
+
+
 }

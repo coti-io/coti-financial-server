@@ -9,16 +9,17 @@ import lombok.Data;
 
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
+import java.io.Serializable;
 import java.util.List;
 
 @Data
-public class GetDisputesData implements ISignable, ISignValidatable {
+public class GetDisputesData implements Serializable, ISignable, ISignValidatable {
 
     private List<Hash> disputeHashes;
     @NotNull
-    private ActionSide disputeSide;
+    private @Valid ActionSide disputeSide;
     @NotNull
-    private Hash userHash;
+    private @Valid Hash userHash;
     @NotNull
     private @Valid SignatureData userSignature;
 

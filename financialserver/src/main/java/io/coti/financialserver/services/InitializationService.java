@@ -6,6 +6,7 @@ import io.coti.basenode.data.NetworkNodeData;
 import io.coti.basenode.data.NodeType;
 import io.coti.basenode.data.TransactionData;
 import io.coti.basenode.data.interfaces.IPropagatable;
+import io.coti.basenode.exceptions.CotiRunTimeException;
 import io.coti.basenode.services.BaseNodeInitializationService;
 import io.coti.basenode.services.interfaces.ICommunicationService;
 import lombok.extern.slf4j.Slf4j;
@@ -31,13 +32,14 @@ public class InitializationService extends BaseNodeInitializationService {
     private String webServerUrl;
     @Autowired
     private ICommunicationService communicationService;
-    private EnumMap<NodeType, List<Class<? extends IPropagatable>>> publisherNodeTypeToMessageTypesMap = new EnumMap<>(NodeType.class);
+    private final EnumMap<NodeType, List<Class<? extends IPropagatable>>> publisherNodeTypeToMessageTypesMap = new EnumMap<>(NodeType.class);
     @Autowired
     private DistributionService distributionService;
     @Autowired
     private FundDistributionService fundDistributionService;
 
     @PostConstruct
+    @Override
     public void init() {
         try {
             super.init();
@@ -63,6 +65,10 @@ public class InitializationService extends BaseNodeInitializationService {
 
             distributionService.distributeToInitialFunds();
             fundDistributionService.initReservedBalance();
+        } catch (CotiRunTimeException e) {
+            log.error("Errors at {}", this.getClass().getSimpleName());
+            e.logMessage();
+            System.exit(SpringApplication.exit(applicationContext));
         } catch (Exception e) {
             log.error("Errors at {}", this.getClass().getSimpleName());
             log.error("{}: {}", e.getClass().getName(), e.getMessage());
@@ -72,7 +78,7 @@ public class InitializationService extends BaseNodeInitializationService {
 
     @Override
     protected NetworkNodeData createNodeProperties() {
-        NetworkNodeData networkNodeData = new NetworkNodeData(NodeType.FinancialServer, nodeIp, serverPort, NodeCryptoHelper.getNodeHash(), networkType);
+        NetworkNodeData networkNodeData = new NetworkNodeData(NodeType.FinancialServer, version, nodeIp, serverPort, NodeCryptoHelper.getNodeHash(), networkType);
         networkNodeData.setPropagationPort(propagationPort);
         networkNodeData.setWebServerUrl(webServerUrl);
         return networkNodeData;
